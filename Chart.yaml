@@ -1,7 +1,7 @@
 apiVersion: v2
 name: librarian
 description: librarian Argo CD Apps of Apps for runik
-version: "1.2.5"
+version: "1.2.6"
 home: https://github.com/runik-platform
 sources:
   - https://github.com/runik-platform/runik-platform
