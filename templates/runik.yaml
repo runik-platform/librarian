@@ -99,6 +99,14 @@ SPDX-License-Identifier: AGPL-3.0-only
   {{- if not (eq $spellPath (print "bookrack/" $spellbook.name "/" $chapterName "/index.yaml")) }}
     {{- $appParams := deepCopy $spellbook.appParams }}
     {{- $spellDefinition := ($.Files.Get $spellPath | fromYaml) }}
+    {{- if hasKey $spellDefinition "kustomize" }}
+      {{- if or (not $spellDefinition.path) $spellDefinition.chart }}
+        {{- fail (printf "%s: kustomize requires a path source without chart" $spellPath) }}
+      {{- end }}
+      {{- if not (kindIs "map" $spellDefinition.kustomize) }}
+        {{- fail (printf "%s: kustomize must be a map" $spellPath) }}
+      {{- end }}
+    {{- end }}
     {{- $_ := mergeOverwrite $appParams (deepCopy (default dict $chapter.appParams) ) }}
     {{- $_ := mergeOverwrite $appParams (deepCopy (default dict $spellDefinition.appParams )) }}
     {{- $spell := (dict "name" $spellDefinition.name ) }}
@@ -141,11 +149,15 @@ metadata:
   {{- $nameContext := dict "Values" (dict "name" $spellDefinition.name "namePrefix" $namePrefix "nameSuffix" $nameSuffix) "Release" (dict "Name" $spellDefinition.name) }}
   name: {{ include "common.name" $nameContext }}
   namespace: {{ default "argocd" $spellbook.argocdNamespace }}
-  {{- with ($spellDefinition.appParams).customFinalizers }}
+  {{- $finalizers := deepCopy (default (list) $appParams.customFinalizers) }}
+  {{- if and (not $appParams.preserveResourcesOnDeletion) (not (has "resources-finalizer.argocd.argoproj.io" $finalizers)) }}
+    {{- $finalizers = prepend $finalizers "resources-finalizer.argocd.argoproj.io" }}
+  {{- end }}
+  {{- with $finalizers }}
   finalizers:
   {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with ($spellDefinition.appParams).annotations }}
+  {{- with $appParams.annotations }}
   annotations:
   {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -174,7 +186,10 @@ spec:
       path: {{ $spellDefinition.path }}
       {{- end }}
       targetRevision: {{ $spellDefinition.revision }}
-    {{- if not ($spellDefinition.appParams).noHelm }}
+    {{- if hasKey $spellDefinition "kustomize" }}
+      kustomize:
+        {{- toYaml $spellDefinition.kustomize | nindent 8 }}
+    {{- else if not ($spellDefinition.appParams).noHelm }}
       helm:
       {{- if ($spellDefinition.appParams).skipCrds }}
         skipCrds: true
@@ -257,6 +272,14 @@ spec:
   {{- /* runes */}}
   {{- $ignoreDiff := (default list $appParams.ignoreDifferences) }}
   {{- range $rune := $spellDefinition.runes }}
+    {{- if hasKey $rune "kustomize" }}
+      {{- if or (not $rune.path) $rune.chart }}
+        {{- fail (printf "%s: rune kustomize requires a path source without chart" $spellPath) }}
+      {{- end }}
+      {{- if not (kindIs "map" $rune.kustomize) }}
+        {{- fail (printf "%s: rune kustomize must be a map" $spellPath) }}
+      {{- end }}
+    {{- end }}
     {{- $ignoreDiff = concat $ignoreDiff (default list ($rune.appParams).ignoreDifferences) }}
     {{- if not ($rune.appParams).noOverite }}
       {{- $_ := mergeOverwrite $appParams (default dict $rune.appParams ) }}
@@ -270,7 +293,10 @@ spec:
       path: {{ $rune.path }}
       {{- end }}
       targetRevision: {{ $rune.revision }}
-    {{- if not ($rune.appParams).noHelm }}
+    {{- if hasKey $rune "kustomize" }}
+      kustomize:
+        {{- toYaml $rune.kustomize | nindent 8 }}
+    {{- else if not ($rune.appParams).noHelm }}
       helm:
         {{- if ($rune.appParams).skipCrds }}
         skipCrds: true

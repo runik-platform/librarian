@@ -4,6 +4,10 @@ appParams:
   noHelm: false
   disableAutoSync: false
   skipCrds: false
+  # Delete resources managed by an Application when that Application is deleted.
+  # Set to true at book, chapter, or spell level to intentionally orphan them.
+  preserveResourcesOnDeletion: false
+  customFinalizers: []
   # Sync policy
   syncPolicy:
     # managedNamespaceMetadata:
@@ -29,6 +33,5 @@ appParams:
         duration: 5s # the amount to back off. Default unit is seconds, but could also be a duration (e.g. "2m", "1h")
         factor: 2 # a factor to multiply the base duration after each failed retry
         maxDuration: 3m # the maximum amount of time allowed for the backoff strategy
-
 
 

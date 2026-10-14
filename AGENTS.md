@@ -1,6 +1,6 @@
-# CLAUDE.md — librarian
+# AGENTS.md — librarian
 
-The orchestrator that turns a bookrack into ArgoCD Applications. Shared concepts (two dispatchers, lexicon, trinkets) live in the [root CLAUDE.md](../CLAUDE.md) and [docs/vocabulary.md](../docs/vocabulary.md). This file is the chart-specific entry point: what librarian is responsible for, how it is invoked, and where to read next for each topic.
+The orchestrator that turns a bookrack into ArgoCD Applications. Shared concepts (two dispatchers, lexicon, trinkets) live in the [root AGENTS.md](../AGENTS.md) and [docs/vocabulary.md](../docs/vocabulary.md). This file is the chart-specific entry point: what librarian is responsible for, how it is invoked, and where to read next for each topic.
 
 ## 1. Role
 
@@ -92,6 +92,13 @@ librarian/values.yaml  →  book  →  chapter  →  spell
                           (unless rune.appParams.noOverite: true)
 ```
 
+Generated Applications receive
+`resources-finalizer.argocd.argoproj.io` by default so deleting an Application
+also deletes the resources it manages. Set
+`appParams.preserveResourcesOnDeletion: true` at book, chapter, or spell level
+to intentionally orphan those resources. Entries in `customFinalizers` are
+merged with the managed resources finalizer rather than replacing it.
+
 ### 5.3 trinkets registry
 
 ```
@@ -148,7 +155,7 @@ Deeper merge semantics: [docs/design/merge-system.md](../docs/design/merge-syste
 metadata:
   name: <namePrefix><spell.name><nameSuffix>
   namespace: <argocdNamespace, default "argocd">
-  finalizers, annotations          # from merged appParams
+  finalizers, annotations          # from merged appParams; resource finalizer by default
 spec:
   project: <projectName, default book.name>
   destination:
@@ -286,7 +293,7 @@ Implementation: `librarian/templates/runik.yaml` (emit) and `librarian/templates
 
 ## 11. Related docs
 
-- [Root CLAUDE.md](../CLAUDE.md) — framework-wide concepts.
+- [Root AGENTS.md](../AGENTS.md) — framework-wide concepts.
 - [docs/vocabulary.md](../docs/vocabulary.md) — glossary.
 - [docs/usage/bookrack.md](../docs/usage/bookrack.md) — book / chapter authoring.
 - [docs/usage/spells.md](../docs/usage/spells.md) — spell types and fields.
@@ -294,3 +301,18 @@ Implementation: `librarian/templates/runik.yaml` (emit) and `librarian/templates
 - [docs/usage/deploying.md](../docs/usage/deploying.md) — bootstrap and sync behavior.
 - [docs/design/librarian.md](../docs/design/librarian.md) — internals.
 - [docs/design/merge-system.md](../docs/design/merge-system.md) — merge cascade detail.
+
+## Development and publication
+
+Forgejo `runik/librarian` is the source of truth. Develop from
+`origin/upstream`, push a topic branch to Forgejo, and merge a reviewed PR into
+`upstream`; never develop on or push directly to the generated GitHub repo.
+Every upstream merge automatically triggers Runik component synchronization,
+so do not update the aggregate gitlink manually.
+
+For a release, first merge the intended version in `Chart.yaml`, then publish a
+Forgejo Release at the current `upstream` head with the exact tag
+`v<Chart.yaml.version>`. A raw tag push does not publish. Tarot creates the clean
+GitHub branch and tag; GitHub Actions creates the Release page. Librarian is
+Git-only, produces no OCI artifact, and publication must preserve
+`bookrack -> ../bookrack` as a Git symlink.
