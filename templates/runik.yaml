@@ -341,7 +341,7 @@ spec:
       {{- end }}
     {{- end }}
     server: {{ default "https://kubernetes.default.svc" $cluster }}
-    namespace: {{ default $spellDefinition.name $spellDefinition.namespace }}
+    namespace: {{ coalesce $spellDefinition.namespace $chapter.namespace $spellbook.namespace $spellDefinition.name }}
   syncPolicy:
     {{- if $appParams.managedNamespaceMetadata }}
       {{- with $appParams.managedNamespaceMetadata }}

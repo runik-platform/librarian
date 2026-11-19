@@ -60,8 +60,8 @@ Librarian honors keys at four levels: chart `values.yaml` defaults, book `index.
 | Level | Keys librarian acts on |
 |-------|------------------------|
 | `librarian/values.yaml` | `appParams` defaults, `argocdNamespace` |
-| book `index.yaml` | `name`, `chapters`, `defaultTrinket`, `trinkets`, `appendix`, `localAppendix`, `namePrefix`, `nameSuffix`, `clusterSelector`, `projectName`, `argocdNamespace`, `appParams` |
-| chapter `index.yaml` | `name`, `defaultTrinket`, `trinkets`, `appendix`, `localAppendix`, `namePrefix`, `nameSuffix`, `clusterSelector`, `projectName`, `appParams` |
+| book `index.yaml` | `name`, `namespace`, `chapters`, `defaultTrinket`, `trinkets`, `appendix`, `localAppendix`, `namePrefix`, `nameSuffix`, `clusterSelector`, `projectName`, `argocdNamespace`, `appParams` |
+| chapter `index.yaml` | `name`, `namespace`, `defaultTrinket`, `trinkets`, `appendix`, `localAppendix`, `namePrefix`, `nameSuffix`, `clusterSelector`, `projectName`, `appParams` |
 | spell file | `name` (required), `namespace`, `namePrefix`, `nameSuffix`, `chart`/`path`/`repository`/`revision`/`values`, `runes`, `clusterSelector`, `projectName`, `appendix`, `localAppendix`, `appParams`, and any key that matches a registered trinket trigger |
 
 Field-by-field reference: [docs/usage/bookrack.md](../docs/usage/bookrack.md) for book + chapter, [docs/usage/spells.md](../docs/usage/spells.md) for spell fields.
@@ -160,7 +160,7 @@ spec:
   project: <projectName, default book.name>
   destination:
     server:    <from clusterSelector or https://kubernetes.default.svc>
-    namespace: <spell.namespace or spell.name>
+    namespace: <spell.namespace or chapter.namespace or book.namespace or spell.name>
   sources:                         # fixed order
     - <primary source>             # §5.6 or §5.7
     - <trinket sources>            # §5.8, one per matching trigger key
@@ -168,6 +168,14 @@ spec:
   syncPolicy: <built from merged appParams>
   ignoreDifferences: <accumulated from runes>
 ```
+
+The destination namespace uses the first non-empty value in that order. Omitted,
+null, and empty-string namespaces fall through to the next scope. The fallback
+is the spell's original `name`, without `namePrefix` or `nameSuffix`.
+`argocdNamespace` separately controls where the Application itself lives.
+
+Namespace inheritance contract tests belong to Runik's existing
+`make test-librarian` target, alongside the other Librarian contracts.
 
 Full field reference for `appParams`, `syncPolicy`, `managedNamespaceMetadata`, `ignoreDifferences`, and `clusterSelector`: [docs/usage/deploying.md](../docs/usage/deploying.md).
 
@@ -312,7 +320,7 @@ so do not update the aggregate gitlink manually.
 
 For a release, first merge the intended version in `Chart.yaml`, then publish a
 Forgejo Release at the current `upstream` head with the exact tag
-`v<Chart.yaml.version>`. A raw tag push does not publish. Tarot creates the clean
+`v<Chart.yaml.version>`. A raw tag push does not publish. The repository publication Workflow creates the clean
 GitHub branch and tag; GitHub Actions creates the Release page. Librarian is
 Git-only, produces no OCI artifact, and publication must preserve
 `bookrack -> ../bookrack` as a Git symlink.
